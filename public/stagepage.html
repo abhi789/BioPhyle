@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Bootstrap Example</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script type="text/javascript">
+  var Seq1, Seq2, complete, l;
+  var deadline, clock;
+  var stage;
+  var difficulty = "Easy";
+  jQuery.ajaxSetup({async:false});
+  $.get("getseq1", function(data, status){
+    Seq1 = data;
+	Seq1 =  "X"+ Seq1;
+	console.log(data);
+    console.log("1st Seq: "+Seq1);
+  });
+  $.get("getseq2", function(data, status){
+    Seq2 = data;
+	Seq2 =  "X"+ Seq2;
+	console.log(data);
+    console.log("2nd Seq: "+Seq2);
+  });
+  $.get("getgaps", function(data, status){
+    l = data;
+	console.log(data);
+    console.log("Gaps : "+l);
+  });
+  $.get("diff", function(data, status){
+    difficulty = data;
+	console.log("Received" +data);
+    console.log("Difficulty : "+difficulty);
+  });
+  $.get("getstage", function(data, status){
+    stage = data;
+    console.log("Received" +data);
+    console.log("Stage : "+stage);
+  });
+  Seq1Arr = Seq1.split("");
+  Seq2Arr = Seq2.split("");
+
+
+
+
+
+  var n = Seq1.length + 1;
+  var m = Seq2.length + 1;
+  var i, j;
+
+  var x  = new Array(n);
+  var y  = new Array(m);
+  var G1 = new Array(n);
+  var H1 = new Array(n);
+  var u, v ,s , minJ, w;
+
+  var gap_pos = new Array(l);
+  var gap_len = new Array(l);
+  var where = new Array(l);
+  var B;
+
+  var G = new Array(l);
+  var H = new Array(l);
+  var minI;
+  for ( i = 0; i < l; i++ ) {
+      G[i] = new Array(n);
+      for( j = 0; j < n; j++ )
+      {
+          G[i][j] = new Array(m);
+      }
+  }
+
+  for ( i = 0; i < l; i++ ) {
+      H[i] = new Array(n);
+      for( j = 0; j < n; j++ )
+      {
+          H[i][j] = new Array(m);
+      }
+  }
+
+
+  for ( var i = 0; i < n; i++ ) {
+      G1[i] = new Array(m);
+  }
+
+  for ( var i = 0; i < n; i++ ) {
+      H1[i] = new Array(m);
+  }
+
+  var newminI, newminJ;
+
+  var seq1 = Seq1;
+  var seq2 = Seq2;
+
+  x = seq1.split("");
+  y = seq2.split("");
+  console.log(seq1);
+  console.log(seq2);
+  console.log(x);
+  console.log(y);
+
+  GapMis(G1,H1,x,x.length,y,y.length);
+  GapsMis(G1,H1, G, H, x, x.length, y, y.length, l);
+  console.log(G1);
+  console.log(H1);
+  console.log(G);
+  console.log(H);
+  GapsPos(H , n-1, y.length, l-1, gap_pos, gap_len, where);
+  console.log("B :"+ B);
+  console.log('Gap Pos:'+gap_pos);
+  console.log('Gap len:'+gap_len);
+  console.log('Where:'+where);
+
+  function GapMis(G1, H1, x, n, y, m)
+  {
+      for(i=0;i<=n;i++)
+      {
+          G1[i][0] = i;
+          H1[i][0] = i;
+      }
+
+      for (j=0;j<=m;j++)
+      {
+          G1[0][j] = j;
+          H1[0][j] = -j;
+
+      }
+
+      for (i=1;i<=n;i++)
+      {
+          for(j=1;j<=m;j++)
+          {
+              if(i<j)
+              {
+                  u = G1[i-1][j-1]+ deltaE(x[i],y[j]);
+                  v = G1[i][i] + (j - i);
+                  G1[i][j] = Math.min(u,v);
+                  if(v<u)
+                  {
+                      H1[i][j] = i-j;
+                  }
+                  else
+                      H1[i][j] = 0;
+              }
+              if(i>j)
+              {
+                  u = G1[i-1][j-1]+ deltaE(x[i],y[j]);
+                  v = G1[j][j] + (i -j );
+                  G1[i][j] = Math.min(u,v);
+                  if(v<u)
+                  {
+                      H1[i][j] = i-j;
+                  }
+                  else
+                      H1[i][j] = 0;
+              }
+              if(i==j)
+              {
+                  G1[i][j] = G1[i-1][j-1]+ deltaE(x[i],y[j]);
+                  H1[i][j] = 0;
+              }
+
+          }
+      }
+  }
+
+  function deltaE(charA, charB)
+  {
+      if(charA != charB)
+      {
+          return 1;
+      }
+      else
+          return 0;
+  }
+
+  function GapsMis(G1, H1, G, H, x, n, y, m, l)
+  {
+      minI = new Array(n);
+      G[0] = G1;
+      H[0] = H1;
+      for (s=1;s<l;s++)
+      {
+
+          //initialize matrices
+          for ( i=0; i<=n; i++ )
+          {
+              G[s][i][0] = i;
+              H[s][i][0] = i;
+          }
+          for ( j=0; j<=m; j++ )
+          {
+              G[s][0][j] = j;
+              H[s][0][j] = -j;
+          }
+      }
+      for( s=1; s<l; s++ )
+      {
+          for( i=0; i<=m; i++ )
+          {
+              minI[i] =0;
+          }
+          for( i=1; i<=n; i++ )
+          {
+              minJ = 0;
+              for( j=1; j<=m; j++ )
+              {
+
+                  newminI = 0;
+                  if(G[s-1][i][j] < (G[s-1][minI[j]][j] + i - minI[j] ))
+                  {
+                      minI[j] = i;
+                      newminI = 1;
+                  }
+                  u = G[s-1][minI[j]][j]+ i - minI[j];
+                  newminJ = 0;
+
+                  if(G[s-1][i][j] <  G[s-1][i][minJ] + j - minJ )
+                  {
+                      minJ = j;
+                      newminJ = 1;
+                  }
+
+                  v = G[s-1][i][minJ] + j - minJ;
+
+                  w = G[s][i-1][j-1] + deltaE(x[i],y[j]);
+
+                  G[s][i][j] = Math.min( u , Math.min(v , w));
+
+                  if(u == Math.min(u,Math.min(v,w)) )
+                  {
+                      H[s][i][j] = (i - minI[j]);
+
+
+                  }
+
+                  if(v ==  Math.min(u,Math.min(v,w)))
+                  {
+                      H[s][i][j] = - (j - minJ);
+                  }
+                  if(w == Math.min(u,Math.min(v,w)))
+                  {
+                      H[s][i][j] =0;
+
+                  }
+
+              }
+          }
+      }
+  }
+
+  function GapsPos(H, i, m, s, gap_pos, gap_len, where)
+  {
+
+      var j;
+      j = m;
+
+      B = 0;
+      for (var it = 0; it <= s; it++)
+      {
+          gap_pos[it] = 0;
+      }
+      for (var it1 = 0; it <= s; it1++)
+      {
+          gap_len[it1] = 0;
+      }
+      for (var it2 = 0; it <= s; it2++)
+      {
+          where[it2] = 0;
+      }
+      while (i>=0 && j>=0)
+      {
+          if ( H[s][i][j] == 0 )
+          {
+              i -= 1;
+              j -= 1;
+          }
+          else
+          {
+              if (H[s][i][j] < 0)
+              {
+                  gap_pos[B] = j;
+                  gap_len[B] = -H[s][i][j];
+                  where[B] = 'Y';
+                  j = j + H[s][i][j];
+              }
+              else
+              {
+                  gap_pos[B] = i;
+                  gap_len[B] = H[s][i][j];
+                  where[B] = 'X';
+                  i = i - H[s][i][j];
+              }
+              B = B + 1;
+          }
+      }
+  }
+  
+  
+
+  
+  var Seq1HtmlDivContents;
+
+  var Gs = G;
+  var Hs = H;
+
+
+  console.log(Gs);
+  console.log(Hs);
+
+
+   G = Gs[stage];
+   H = Hs[stage];
+
+  console.log(G);
+  console.log(H);
+
+  var increasepercentage = 100 / (Seq1.length * Seq2.length * 2) ;
+$( document ).ready(function() {
+		complete = 0;
+		
+		if(stage != 0)
+		{
+			var htmlString = "<table class='table table-bordered padding=0 col-sm-4'>";
+			var htmlString2 = "<table class=' table table-bordered padding=0 col-sm-4'>";
+			htmlString += "<tr><td></td>";
+			htmlString2 += "<tr><td></td>";
+			for(var j=0; j < Seq2.length; j++)
+			{
+				htmlString += "<td>"+Seq2Arr[j]+"</td>";
+				htmlString2 += "<td>"+Seq2Arr[j]+"</td>";
+			}
+			htmlString += "</tr>";
+			htmlString2 += "</tr>";
+			for(var i=0; i < Seq1.length; i++){
+			htmlString += "<tr>";
+			htmlString2 += "<tr>";
+			for(var j=0; j < Seq2.length +1 ; j++){
+				if(j==0)
+				{
+					htmlString += "<td>"+Seq1Arr[i]+"</td>";
+					htmlString2 += "<td>"+Seq1Arr[i]+"</td>";
+				}
+				else
+				{
+					htmlString += "<td class='GpMatrix-cell'>" + Gs[stage-1][i][j-1]+"</td>";
+					htmlString2 += "<td class='HpMatrix-cell'>" + Hs[stage-1][i][j-1]+ "</td>";
+				}
+
+				}
+			htmlString += "</tr>";
+			htmlString2 += "</tr>";
+		}
+		
+		htmlString += "</table>"
+		htmlString2 += "</table>"
+		document.getElementById("GpMatrix").innerHTML = htmlString;
+		document.getElementById("HpMatrix").innerHTML = htmlString2;
+		}
+	
+		var htmlString = "<table class='table table-bordered col-sm-4'>";
+		var htmlString2 = "<table class=' table table-bordered col-sm-4'>";
+		htmlString += "<tr><td></td>";
+		htmlString2 += "<tr><td></td>";
+		for(var j=0; j < Seq2.length; j++)
+		{
+			htmlString += "<td>"+Seq2Arr[j]+"</td>";
+			htmlString2 += "<td>"+Seq2Arr[j]+"</td>";
+		}
+	  htmlString += "</tr>";
+	  htmlString2 += "</tr>";
+	for(var i=0; i < Seq1.length; i++){
+		htmlString += "<tr>";
+		htmlString2 += "<tr>";
+		for(var j=0; j < Seq2.length +1 ; j++){
+			if(j==0)
+			{
+				htmlString += "<td>"+Seq1Arr[i]+"</td>";
+				htmlString2 += "<td>"+Seq1Arr[i]+"</td>";
+			}
+			else
+			{
+				htmlString += "<td class='GMatrix-cell'>" + "<input type='text'   maxlength='2'  class = 'form-control userfilled_unvalidated' id='G"+(i)+","+(j-1)+"'></td>";
+				htmlString2 += "<td class='HMatrix-cell'>" + "<input type='text'  class = 'form-control userfilled_unvalidated' maxlength='2' id='H"+(i)+","+(j-1)+"'></td>";
+			}
+
+			}
+		htmlString += "</tr>";
+		htmlString2 += "</tr>";
+	}
+	htmlString += "</table>"
+	htmlString2 += "</table>"
+	document.getElementById("GMatrix").innerHTML = htmlString;
+	document.getElementById("HMatrix").innerHTML = htmlString2;
+	
+
+	
+
+	if(difficulty == 'Easy')
+	{
+		deadline = new Date(Date.parse(new Date()) + 60 * 7 * 1000);
+		easyFunction();
+	}
+	if(difficulty == 'Medium')
+	{
+		deadline = new Date(Date.parse(new Date()) + 60 * 6 * 1000);
+		medFunction();
+	}
+	if(difficulty == 'Hard')
+	{
+		deadline = new Date(Date.parse(new Date()) + 60 * 5 * 1000);
+		hardFunction();
+	}
+	
+	initializeClock('clockdiv');
+	
+	
+	$('#collapse2').collapse({
+  toggle: false
+})
+	$('#collapse4').collapse({
+  toggle: false
+})
+});
+
+
+	$(document).on('change', '.GMatrix-cell', function() {
+	for(var i=0;i< Seq1.length;i++)
+	{
+		for(var j=0;j< Seq2.length;j++)
+		{
+			if(document.getElementById('G'+i+','+j).value == G[i][j] && document.getElementById('G'+i+','+j).value != "" )
+				{
+					if(document.getElementById('G'+i+','+j).className == "form-control userfilled_unvalidated")
+					{
+						console.log(i+" "+j+"Matched");
+						document.getElementById('G'+i+','+j).className = "form-control userfilled_validated";
+						document.getElementById('G'+i+','+j).style.backgroundColor  = "palegreen";
+						complete = complete + increasepercentage;
+						$('#theprogressbar').attr('aria-valuenow', complete ).css('width', complete+"%");
+						$('#theprogressbar').html(complete+"% Matrices Complete");
+                        if(complete > 99)
+                        {
+                          gameComplete();
+                        }
+						if(difficulty == 'Easy')
+							deadline = new Date(Date.parse(deadline) + 60 * 3 * 1000);
+						if(difficulty == 'Medium')
+							deadline = new Date(Date.parse(deadline) + 60 * 2 * 1000);
+						if(difficulty == 'Hard')
+							deadline = new Date(Date.parse(deadline) + 60 * 1 * 1000);
+					}
+
+				}
+			else if(document.getElementById('G'+i+','+j).value != "")
+				{
+					console.log(i+" "+j+"Mismatched");
+					document.getElementById('G'+i+','+j).style.backgroundColor  = "lightsalmon";
+					if(difficulty == 'Hard')
+						deadline = new Date(Date.parse(deadline) - 60 * 1 * 1000);
+				}
+		}
+		
+		
+	}
+});
+  
+	$(document).on('change', '.HMatrix-cell', function() {
+	for(var i=0;i< Seq1.length;i++)
+	{
+		for(var j=0;j< Seq2.length;j++)
+		{
+			if(document.getElementById('H'+i+','+j).value == H[i][j] && document.getElementById('H'+i+','+j).value != "" )
+				{
+					if(document.getElementById('H'+i+','+j).className == "form-control userfilled_unvalidated")
+					{
+						document.getElementById('H'+i+','+j).className = "form-control userfilled_validated";
+						console.log(i+" "+j+"Matched");
+						document.getElementById('H'+i+','+j).style.backgroundColor  = "palegreen";
+						complete = complete + increasepercentage;
+						$('#theprogressbar').attr('aria-valuenow', complete ).css('width', complete+"%");
+						$('#theprogressbar').html(complete+"% Matrices Complete");
+                        if(complete > 99)
+                        {
+                          gameComplete();
+                        }
+						if(difficulty == 'Easy')
+							deadline = new Date(Date.parse(deadline) + 60 * 3 * 1000);
+						if(difficulty == 'Medium')
+							deadline = new Date(Date.parse(deadline) + 60 * 2 * 1000);
+						if(difficulty == 'Hard')
+							deadline = new Date(Date.parse(deadline) + 60 * 1 * 1000);
+					}
+					
+
+
+				}
+			else if(document.getElementById('H'+i+','+j).value != "" )
+				{
+					console.log(i+" "+j+"Mismatched");
+					document.getElementById('H'+i+','+j).style.backgroundColor  = "lightsalmon";
+					if(difficulty == 'Hard')
+						deadline = new Date(Date.parse(deadline) - 60 * 1 * 1000);
+				}
+		}
+		
+		
+	}
+  
+});
+
+
+function exitFunction()
+{
+	$('#Gameover').modal('show');
+}
+
+function gameComplete()
+{
+
+  document.getElementById('nextstage').className = "btn btn-success active";
+  if(stage == l-1)
+  {
+    document.getElementById('nextstage').setAttribute('href', "finalpage.html");;
+  }
+  $.get("stagecomplete", function(data, status){ });
+  console.log("Game Complete");
+}
+
+
+function easyFunction()
+{
+	complete = 0;
+	for(var i=0;i<(Seq1.length*0.9);i++)
+	{
+		for(var j=0;j<(Seq2.length*0.9);j++)
+		{
+			var Random1 = parseInt(Math.random()*100 % Seq1.length);
+			var Random2 = parseInt(Math.random()*100 % Seq2.length);
+			document.getElementById('G'+Random1+','+Random2).value  = G[Random1][Random2];
+			document.getElementById('H'+Random1+','+Random2).value  = H[Random1][Random2];
+			document.getElementById('G'+Random1+','+Random2).disabled   = "true";
+			document.getElementById('H'+Random1+','+Random2).disabled  = "true";
+			document.getElementById('G'+Random1+','+Random2).className    = "form-control autofilled";
+			document.getElementById('H'+Random1+','+Random2).className    = "form-control autofilled";
+			
+		}
+
+	}
+	for(var i=0;i<(Seq1.length);i++)
+	{
+		for(var j=0;j<(Seq2.length);j++)
+		{
+		if(document.getElementById('G'+i+','+j).value == G[i][j] && document.getElementById('G'+i+','+j).value != "" )
+			{
+				complete = complete + increasepercentage;
+				$('#theprogressbar').attr('aria-valuenow', complete ).css('width', complete+"%");
+                $('#theprogressbar').html(complete+"% Matrices Complete");
+                if(complete > 99)
+                {
+                  gameComplete();
+                }
+			}
+			if(document.getElementById('H'+i+','+j).value == H[i][j] && document.getElementById('H'+i+','+j).value != "")
+			{
+				complete = complete + increasepercentage;
+				$('#theprogressbar').attr('aria-valuenow', complete ).css('width', complete+"%");
+				$('#theprogressbar').html(complete+"% Matrices Complete");
+                if(complete > 99)
+                {
+                  gameComplete();
+                }
+			}
+		}
+
+	}
+	difficulty = "Easy";
+
+}
+
+function medFunction()
+{
+	complete = 0;
+	for(var i=0;i<(Seq1.length*0.6);i++)
+	{
+		for(var j=0;j<Seq2.length;j++)
+		{
+			var Random1 = parseInt(Math.random()*100 % Seq1.length);
+			var Random2 = parseInt(Math.random()*100 % Seq2.length);
+			document.getElementById('G'+Random1+','+Random2).value  = G[Random1][Random2];
+			document.getElementById('H'+Random1+','+Random2).value  = H[Random1][Random2];
+			document.getElementById('G'+Random1+','+Random2).disabled   = "true";
+			document.getElementById('H'+Random1+','+Random2).disabled  = "true";
+			document.getElementById('G'+Random1+','+Random2).className    = "form-control autofilled";
+			document.getElementById('H'+Random1+','+Random2).className    = "form-control autofilled";
+		}
+
+	}
+	for(var i=0;i<(Seq1.length);i++)
+	{
+		for(var j=0;j<(Seq2.length);j++)
+		{
+		if(document.getElementById('G'+i+','+j).value == G[i][j] && document.getElementById('G'+i+','+j).value != "" )
+			{
+				complete = complete + increasepercentage;
+				$('#theprogressbar').attr('aria-valuenow', complete ).css('width', complete+"%");
+                $('#theprogressbar').html(complete+"% Matrices Complete");
+                if(complete > 99)
+                {
+                  gameComplete();
+                }
+			}
+			if(document.getElementById('H'+i+','+j).value == H[i][j] && document.getElementById('H'+i+','+j).value != "")
+			{
+				complete = complete + increasepercentage;
+				$('#theprogressbar').attr('aria-valuenow', complete ).css('width', complete+"%");
+				$('#theprogressbar').html(complete+"% Matrices Complete");
+                if(complete > 99 )
+                {
+                  gameComplete();
+                }
+			}
+		}
+
+	}
+	difficulty = "Medium";
+}
+function hardFunction()
+{
+	complete = 0;
+	for(var i=0;i<(Seq1.length*0.5);i++)
+	{
+		for(var j=0;j<(Seq2.length*0.6);j++)
+		{
+			var Random1 = parseInt(Math.random()*100 % Seq1.length);
+			var Random2 = parseInt(Math.random()*100 % Seq2.length);
+			document.getElementById('G'+Random1+','+Random2).value  = G[Random1][Random2];
+			document.getElementById('H'+Random1+','+Random2).value  = H[Random1][Random2];
+			document.getElementById('G'+Random1+','+Random2).disabled   = "true";
+			document.getElementById('H'+Random1+','+Random2).disabled  = "true";
+			document.getElementById('G'+Random1+','+Random2).className    = "form-control autofilled";
+			document.getElementById('H'+Random1+','+Random2).className    = "form-control autofilled";
+		}
+
+	}
+	for(var i=0;i<(Seq1.length);i++)
+	{
+		for(var j=0;j<(Seq2.length);j++)
+		{
+		if(document.getElementById('G'+i+','+j).value == G[i][j] && document.getElementById('G'+i+','+j).value != "")
+			{
+				complete = complete + increasepercentage;
+				$('#theprogressbar').attr('aria-valuenow', complete ).css('width', complete+"%");
+                $('#theprogressbar').html(complete+"% Matrices Complete");
+                if(complete > 99)
+                {
+                  gameComplete();
+                }
+			}
+			if(document.getElementById('H'+i+','+j).value == H[i][j] && document.getElementById('H'+i+','+j).value != "" )
+			{
+				complete = complete + increasepercentage;
+				$('#theprogressbar').attr('aria-valuenow', complete ).css('width', complete+"%");
+				$('#theprogressbar').html(complete+"% Matrices Complete");
+                if(complete > 99)
+                {
+                  gameComplete();
+                }
+			}
+		}
+
+	}
+	difficulty = "Hard";
+}
+
+function getTimeRemaining(endtime) {
+	  var t = Date.parse(endtime) - Date.parse(new Date());
+	  var seconds = Math.floor((t / 1000) % 60);
+	  var minutes = Math.floor((t / 1000 / 60) % 60);
+	  var hours = Math.floor((t / (1000 * 60 * 60)) % 24);
+	  var days = Math.floor(t / (1000 * 60 * 60 * 24));
+	  return {
+		'total': t,
+		'days': days,
+		'hours': hours,
+		'minutes': minutes,
+		'seconds': seconds
+	  };
+	}
+
+	function initializeClock(id) {
+	  clock = document.getElementById(id);
+	  hoursSpan = clock.querySelector('.hours');
+	  minutesSpan = clock.querySelector('.minutes');
+	  secondsSpan = clock.querySelector('.seconds');
+
+	  function updateClock() {
+		var t = getTimeRemaining(deadline);
+
+		hoursSpan.innerHTML = ('0' + t.hours).slice(-2);
+		minutesSpan.innerHTML = ('0' + t.minutes).slice(-2);
+		secondsSpan.innerHTML = ('0' + t.seconds).slice(-2);
+
+		if (t.total <= 0) {
+		  clearInterval(timeinterval);
+		  exitFunction();
+		}
+        if (complete > 99) {
+          clearInterval(timeinterval);
+        }
+	  }
+	   updateClock();
+	  var timeinterval = setInterval(updateClock, 1000);
+	}
+
+
+
+  </script>
+  <style>
+	body{
+	text-align: center;
+  font-family: sans-serif;
+  font-weight: 100;
+}
+
+h1{
+  color: #396;
+  font-weight: 100;
+  font-size: 40px;
+  margin: 40px 0px 20px;
+}
+
+#clockdiv{
+	font-family: sans-serif;
+	color: #fff;
+	display: inline-block;
+	font-weight: 100;
+	text-align: center;
+	font-size: 30px;
+}
+
+#clockdiv > div{
+	padding: 10px;
+	border-radius: 3px;
+	background: #00BF96;
+	display: inline-block;
+}
+
+#clockdiv div > span{
+	padding: 15px;
+	border-radius: 3px;
+	background: #00816A;
+	display: inline-block;
+}
+a {
+    color: #FFFFFF;
+    text-decoration: none;
+}
+.smalltext{
+	padding-top: 5px;
+	font-size: 16px;
+}
+    
+    /* Add a gray background color and some padding to the footer */
+    footer {
+      background-color: #f2f2f2;
+      padding: 25px;
+    }
+
+  }
+  </style>
+</head>
+<body>
+
+<!-- Modal -->
+  <div class="modal fade" id="GapMisAlgo" role="dialog">
+    <div class="modal-dialog">
+    
+      <!-- Modal content-->
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">GapMis Algorithm</h4>
+        </div>
+        <div class="modal-body" align="left">
+                 <p>ALGORITHM GapMis(x, n, y, m)
+<br>{Initialising matrix G1 and matrix H1}
+<br>for i &lt;- 0 to n do
+<br>&nbsp;G1[i, 0] &lt;- i;
+<br>&nbsp;H1[i, 0] &lt;- i;
+<br>for j &lt;- 0 to m do
+<br>&nbsp;G1[0, j] &lt;- j;
+<br>&nbsp;H1[0, j] &lt;- -j;
+<br>{Computing matrix G1 and matrix H1}
+<br>for i &lt;- 1 to n do
+<br>&nbsp;for j &lt;- 1 to m do
+<br>&nbsp;&nbsp;if i&lt;j then
+<br>&nbsp;&nbsp;&nbsp;u &lt;- G1[i - 1, j - 1] + dE(x[i], y[j]);
+<br>&nbsp;&nbsp;&nbsp;v &lt;- G1[i, i]+(j - i);
+<br>&nbsp;&nbsp;&nbsp;G1[i, j] &lt;- min{u, v};
+<br>&nbsp;&nbsp;&nbsp;if v&lt;u then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;H1[i, j] &lt;- j - i;
+<br>&nbsp;&nbsp;&nbsp;else
+<br>&nbsp;&nbsp;&nbsp;&nbsp;H1[i, j] &lt;- 0;
+<br>&nbsp;&nbsp;&nbsp;if i&gt;j then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;u &lt;- G1[i - 1, j - 1] + dE(x[i], y[j]);
+<br>&nbsp;&nbsp;&nbsp;&nbsp;v &lt;- G1[j, j]+(i - j);
+<br>&nbsp;&nbsp;&nbsp;&nbsp;G1[i, j] &lt;- min{u, v};
+<br>&nbsp;&nbsp;&nbsp;&nbsp;if v&lt;u then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H1[i, j] &lt;- i - j;
+<br>&nbsp;&nbsp;&nbsp;&nbsp;else
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H1[i, j] &lt;- 0;
+<br>&nbsp;&nbsp;&nbsp;&nbsp;if i = j then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;u &lt;- G1[i - 1, j - 1] + dE(x[i], y[j]);
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H1[i, j] &lt;- 0;
+<br>return G1 and H1;</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal" >Okay</button>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+ 
+<!-- Modal -->
+  <div class="modal fade" id="GapsMisAlgo" role="dialog">
+    <div class="modal-dialog">
+    
+      <!-- Modal content-->
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">Gapsmis Algorithm</h4>
+        </div>
+        <div class="modal-body">
+          <p>Some text in the modal.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal" >Okay</button>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+
+<!-- Modal -->
+  <div class="modal fade" id="Help" role="dialog">
+    <div class="modal-dialog">
+    
+      <!-- Modal content-->
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">Modal Header</h4>
+        </div>
+        <div class="modal-body">
+          <p>Some text in the modal.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal" >Okay</button>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+  
+<!-- Modal -->
+  <div class="modal fade" id="Gameover" role="dialog">
+    <div class="modal-dialog">
+    
+      <!-- Modal content-->
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">Modal Header</h4>
+        </div>
+        <div class="modal-body">
+          <p>Some text in the modal.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal" onclick = "exitFunction">Play Again</button>
+		  <button type="button" class="btn btn-default" data-dismiss="modal" onclick = "exitFunction">Exit</button>
+        </div>
+      </div>
+      
+    </div>
+  </div>  
+
+
+
+<div class="container text-center">  
+  <div class="row">
+  <div class="col-sm-4"></div>
+  <div class="col-sm-4"><h3>Stage</h3></div>
+  <div class="col-sm-4">        
+	  <button type="button" data-toggle="modal" class="btn btn-default btn-sm" data-target="#Help">
+	  Help <span class="glyphicon glyphicon-question-sign"></span> 
+	  </button>
+	  <button type="button" data-toggle="modal" class="btn btn-default btn-sm" data-target="#GapMisAlgo">
+	  Show Gapmis Algorithm
+	  </button>
+  </div>
+  </div>  
+
+<div id="clockdiv">
+  <div>
+    <span class="hours"></span>
+    <div class="smalltext">Hours</div>
+  </div>
+  <div>
+    <span class="minutes"></span>
+    <div class="smalltext">Minutes</div>
+  </div>
+  <div>
+    <span class="seconds"></span>
+    <div class="smalltext">Seconds</div>
+  </div><br>
+</div>
+  <div class="row">
+  <div class="col-sm-4"> </div>
+  <div class="col-sm-4"></div>
+  <div class="col-sm-4"><a type="button" id="nextstage" class="btn btn-success disabled" href="stagepage.html" style="text-decoration: none;">Next Stage 	&gt;</a></div>
+  </div>
+  <br>
+  <div class="progress">
+  <div class="progress-bar progress-bar-success progress-bar-striped active"  id="theprogressbar" role="progressbar"
+  aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%">
+     0% Matrices Complete
+  </div>
+  </div>
+  
+   <div class="row" alignement = "center">
+    <div class="panel-group">
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <a data-toggle="collapse" href="#collapse1"><p>G<sub>S-1</sub> Matrix</p></a>
+      </h4>
+    </div>
+    <div id="collapse1" class="panel-collapse collapse">
+      <div  id="GpMatrix" style="width:100%"></div> 
+    </div>
+  </div>
+</div>
+</div>
+ 
+ 
+ <div class="row" alignement = "center">
+    <div class="panel-group">
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <a data-toggle="collapse" aria-expanded="true" href="#collapse2"><p>G<sub>S</sub> Matrix</p></a>
+      </h4>
+    </div>
+    <div id="collapse2" class="panel-collapse collapse">
+       <div  id="GMatrix" style="width:100%"></div>
+    </div>
+  </div>
+</div>
+ </div>
+ 
+ <div class="row" alignement = "center">
+    <div class="panel-group">
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <a data-toggle="collapse" href="#collapse3"><p>H<sub>S-1</sub> Matrix</p></a>
+      </h4>
+    </div>
+    <div id="collapse3" class="panel-collapse collapse">
+     <div  id="HpMatrix" style="width:100%"></div>
+    </div>
+  </div>
+</div>
+ </div>
+
+  <div class="row" alignement = "center">
+    <div class="panel-group">
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <a data-toggle="collapse" aria-expanded="true" href="#collapse4"><p>H<sub>S</sub> Matrix</p></a>
+      </h4>
+    </div>
+    <div id="collapse4" class="panel-collapse collapse">
+     <div  id="HMatrix" style="width:100%"></div>
+    </div>
+  </div>
+</div>
+ </div>
+  	
+
+</div><br>
+
+<footer class="container-fluid text-center">
+<h5>Set Difficulty</h5><br>
+<div class="btn-group">
+  <button onclick="easyFunction()"  id="easyDifficulty" type="button" class="btn btn-primary">Easy</button>
+  <button  onclick="medFunction()" id="medDifficulty" type="button" class="btn btn-primary">Medium</button>
+  <button onclick="hardFunction()" id="hardDifficulty" type="button" class="btn btn-primary">Hard</button>
+</div><br><br>
+  <button id="exitButton" type="button" class="btn btn-danger active" onclick="exitFunction()">Exit Game</button
+</footer>
+
+</body>
+</html>
